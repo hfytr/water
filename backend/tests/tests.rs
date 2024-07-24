@@ -9,6 +9,7 @@ use tower::ServiceExt;
 async fn health_check_works() {
     assert_eq!(
         app()
+            .await
             .oneshot(
                 Request::builder()
                     .method("GET")

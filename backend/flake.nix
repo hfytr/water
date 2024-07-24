@@ -23,14 +23,8 @@
             sqlx-cli
           ];
 
-          PGDATA = ".pgdata";
           shellHook = ''
-            fish scripts/init_db.fish
-            function on_exit {
-                pg_ctl --pgdata=$PGDATA stop
-            }
-            trap on_exit EXIT
-            fish
+            source scripts/init_db.sh
           '';
         };
       }

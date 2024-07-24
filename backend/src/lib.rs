@@ -10,9 +10,9 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::postgres::PgPool;
-use std::env::{var, VarError};
+use std::env::var;
 use std::error::Error;
 use std::fmt::Display;
 
@@ -124,6 +124,9 @@ pub struct SmartPostData {
     water: usize,
 }
 
-async fn smart_post(Form(form): Form<SmartPostData>) -> impl IntoResponse {
+async fn smart_post(
+    State(AppState { db }): State<AppState>,
+    Form(form): Form<SmartPostData>,
+) -> impl IntoResponse {
     format!("userid: {}, water: {}", form.userid, form.water)
 }
