@@ -11,14 +11,29 @@ in
       pkg-config
       llvmPackages.bintools
       rustup
+      fish
+      postgresql
+    ];
+    packages = with pkgs; [
+      sqlx-cli
     ];
     RUSTC_VERSION = overrides.toolchain.channel;
     # https://github.com/rust-lang/rust-bindgen#environment-variables
     LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_latest.libclang.lib ];
+    PGDATA = ".pgdata";
+    PGLOG = "$PGDATA/postgresql.log";
     shellHook = ''
+      fish
       export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
       export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
-      '';
+
+      echo "listen_addresses = '*'" >> $PGDATA/postgresql.conf
+      echo "logging_collector = on" >> $PGDATA/postgresql.conf
+      echo "log_directory = 'log'" >> $PGDATA/postgresql.conf
+      echo "log_filename = 'postgresql.log'" >> $PGDATA/postgresql.conf
+
+      fish scripts/init_db.fish
+    '';
     # Add precompiled library to rustc search path
     RUSTFLAGS = (builtins.map (a: ''-L ${a}/lib'') [
       # add libraries here (e.g. pkgs.libvmi)

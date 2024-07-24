@@ -8,8 +8,13 @@ use axum::{
     Form, Router,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::Postgres;
 use std::error::Error;
 use std::fmt::Display;
+
+struct AppState {
+    db: Postgres,
+}
 
 pub fn app() -> Router {
     Router::new()
@@ -21,11 +26,6 @@ pub fn app() -> Router {
 async fn health_check() -> impl IntoResponse {
     dbg!("recieved");
     StatusCode::OK
-}
-
-#[derive(Deserialize)]
-struct DumbMetadata {
-    userid: usize,
 }
 
 #[derive(Debug)]
@@ -46,6 +46,11 @@ impl Display for SimpleError {
 }
 
 impl Error for SimpleError {}
+
+#[derive(Deserialize)]
+struct DumbMetadata {
+    userid: usize,
+}
 
 async fn dumb_post(mut multipart: Multipart) -> impl IntoResponse {
     let mut file_data: Option<Bytes> = None;
