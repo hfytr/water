@@ -14,6 +14,8 @@ set DB_USER (get_default $POSTGRES_USER 'postgres')
 set DB_PASSWORD (get_default $POSTGRES_PASSWORD 'password')
 set DB_NAME (get_default $POSTGRES_DB 'newsletter')
 set DB_PORT (get_default $POSTGRES_PORT '5432')
+set PGDATA ".pgdata";
+set PGLOG "$PGDATA/postgresql.log";
 
 if not test -d /run/postgresql
     sudo mkdir -p /run/postgresql
@@ -30,11 +32,6 @@ echo "listen_addresses = '*'" >> $PGDATA/postgresql.conf
 echo "Starting PostgreSQL server on port 5432..."
 pg_ctl -D $PGDATA -l $PGLOG -o "-p 5432" start
 
-function on_exit
-    pg_ctl -D $PGDATA stop
-end
-trap on_exit EXIT
-
 set -x PGPASSWORD $DB_PASSWORD
 while not psql -h "localhost" -p "$DB_PORT" -U "$DB_USER" -d postgres -c '\q'
     echo "Postgres is still unavailable - sleeping" >&2
@@ -45,8 +42,10 @@ echo "Postgres is up and running on port $DB_PORT!" >&2
 
 set -x DATABASE_URL "postgres://$DB_USER:$DB_PASSWORD@localhost:$DB_PORT/$DB_NAME"
 sqlx database create
+if not test -d migrations
+    mkdir migrations
+end
 sqlx migrate run
-
-createuser --superuser postgres
+echo "hi"
 
 echo "Postgres has been migrated, ready to go!" >&2

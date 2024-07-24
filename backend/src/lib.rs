@@ -1,32 +1,20 @@
 use anyhow::Result;
 use axum::{
     body::Bytes,
-    extract::multipart::{Field, Multipart},
+    extract::{
+        multipart::{Field, Multipart},
+        State,
+    },
     http::{Response, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Form, Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::Postgres;
+use sqlx::postgres::PgPool;
+use std::env::{var, VarError};
 use std::error::Error;
 use std::fmt::Display;
-
-struct AppState {
-    db: Postgres,
-}
-
-pub fn app() -> Router {
-    Router::new()
-        .route("/", get(health_check))
-        .route("/post/dumb", post(dumb_post))
-        .route("/post/smart", post(smart_post))
-}
-
-async fn health_check() -> impl IntoResponse {
-    dbg!("recieved");
-    StatusCode::OK
-}
 
 #[derive(Debug)]
 struct SimpleError {
@@ -47,12 +35,49 @@ impl Display for SimpleError {
 
 impl Error for SimpleError {}
 
+#[derive(Clone)]
+struct AppState {
+    db: PgPool,
+}
+
+impl AppState {
+    async fn new() -> Result<AppState> {
+        Ok(Self {
+            db: PgPool::connect(&format!(
+                "postgres://{}:{}@localhost:{}/{}",
+                var("DB_USER").expect("env var doesn't exist: DB_USER"),
+                var("DB_PASSWORD").expect("env var doesn't exist: DB_PASSWORD"),
+                var("DB_PORT").expect("env var doesn't exist: DB_PORT"),
+                var("DB_NAME").expect("env var doesn't exist: DB_NAME"),
+            ))
+            .await?,
+        })
+    }
+}
+
+pub async fn app() -> Router {
+    let state = AppState::new().await;
+    Router::new()
+        .route("/", get(health_check))
+        .route("/post/dumb", post(dumb_post))
+        .route("/post/smart", post(smart_post))
+        .with_state(state.expect("failed to connect to database"))
+}
+
+async fn health_check() -> impl IntoResponse {
+    dbg!("recieved");
+    StatusCode::OK
+}
+
 #[derive(Deserialize)]
 struct DumbMetadata {
     userid: usize,
 }
 
-async fn dumb_post(mut multipart: Multipart) -> impl IntoResponse {
+async fn dumb_post(
+    State(AppState { db }): State<AppState>,
+    mut multipart: Multipart,
+) -> impl IntoResponse {
     let mut file_data: Option<Bytes> = None;
     let mut userid: Result<usize> =
         Result::Err(SimpleError::new("userid not specified in metadata".to_string()).into());
