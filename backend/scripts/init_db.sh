@@ -9,8 +9,9 @@ get_default() {
 
 export DB_USER=$(get_default "$POSTGRES_USER" "postgres")
 export DB_PASSWORD=$(get_default "$POSTGRES_PASSWORD" "password")
-export DB_NAME=$(get_default "$POSTGRES_DB" "newsletter")
+export DB_NAME=$(get_default "$POSTGRES_DB" "db")
 export DB_PORT=$(get_default "$POSTGRES_PORT" "5432")
+export DB_HOST=$(get_default "$POSTGRES_HOST" "localhost")
 export PGDATA=".pgdata"
 export PGLOG="$PGDATA/postgresql.log"
 
@@ -27,7 +28,9 @@ fi
 echo "listen_addresses = '*'" >> "$PGDATA/postgresql.conf"
 
 echo "Starting PostgreSQL server on port 5432..."
-pg_ctl -D "$PGDATA" -l "$PGLOG" -o "-p 5432" start
+pg_ctl -D "$PGDATA" -l "$PGLOG" -o "-p 5432 -c config_file=$PGDATA/postgresql.conf" start
+
+psql -d postgres -c "CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION;"
 
 export PGPASSWORD="$DB_PASSWORD"
 until psql -h "localhost" -p "$DB_PORT" -U "$DB_USER" -d postgres -c '\q'; do

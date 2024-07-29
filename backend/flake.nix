@@ -12,13 +12,18 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        rustpkg = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default.override {
+          extensions = [ "rust-src" "rust-analyzer" "rustfmt" ];
+          targets = [ "arm-unknown-linux-gnueabihf" ];
+        });
       in {
+        RUST_BACKTRACE = 1;
         devShells.default = with pkgs; mkShell {
           buildInputs = [
             openssl
             postgresql
             pkg-config
-            rust-bin.stable.latest.default
+            rustpkg
             fish
             sqlx-cli
           ];
